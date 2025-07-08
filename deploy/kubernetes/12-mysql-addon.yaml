@@ -1,0 +1,120 @@
+---
+apiVersion: api.clever-cloud.com/v1
+kind: MySql
+metadata:
+  namespace: default
+  name: mysql
+spec:
+  organisation: orga_<uuid-v4>
+  options:
+    version: 80
+    encryption: false
+  instance:
+    region: par
+    plan: s_sml
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app: debian-mysql
+  name: debian-mysql
+  namespace: default
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: debian-mysql
+  namespace: default
+spec:
+  minAvailable: 0
+  selector:
+    matchLabels:
+      app: debian-mysql
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: debian-mysql
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      app: debian-mysql
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - {}
+  egress:
+    - {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: default
+  name: debian-mysql
+  labels:
+    app: debian-mysql
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: debian-mysql
+  template:
+    metadata:
+      labels:
+        app: debian-mysql
+    spec:
+      serviceAccountName: debian-mysql
+      automountServiceAccountToken: true
+      containers:
+        - image: debian:bullseye-slim
+          imagePullPolicy: Always
+          name: debian-mysql
+          command:
+            - "sleep"
+            - "3600"
+          env:
+            - name: MYSQL_ADDON_DB
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secrets # build using the name of the addon following by -secrets
+                  key: MYSQL_ADDON_DB
+            - name: MYSQL_ADDON_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secrets
+                  key: MYSQL_ADDON_HOST
+            - name: MYSQL_ADDON_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secrets
+                  key: MYSQL_ADDON_PASSWORD
+            - name: MYSQL_ADDON_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secrets
+                  key: MYSQL_ADDON_PORT
+            - name: MYSQL_ADDON_URI
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secrets
+                  key: MYSQL_ADDON_URI
+            - name: MYSQL_ADDON_USER
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secrets
+                  key: MYSQL_ADDON_USER
+            - name: MYSQL_ADDON_VERSION
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secrets
+                  key: MYSQL_ADDON_VERSION
+          resources:
+            requests:
+              memory: 64M
+              cpu: 100m
+            limits:
+              memory: 64M
+              cpu: 100m

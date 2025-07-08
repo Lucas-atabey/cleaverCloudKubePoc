@@ -1,0 +1,120 @@
+---
+apiVersion: api.clever-cloud.com/v1
+kind: PostgreSql
+metadata:
+  namespace: default
+  name: postgresql
+spec:
+  organisation: orga_<uuid v4>
+  options:
+    version: 13
+    encryption: false
+  instance:
+    region: par
+    plan: s_sml
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app: debian-postgresql
+  name: debian-postgresql
+  namespace: default
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: debian-postgresql
+  namespace: default
+spec:
+  minAvailable: 0
+  selector:
+    matchLabels:
+      app: debian-postgresql
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: debian-postgresql
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      app: debian-postgresql
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - {}
+  egress:
+    - {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: default
+  name: debian-postgresql
+  labels:
+    app: debian-postgresql
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: debian-postgresql
+  template:
+    metadata:
+      labels:
+        app: debian-postgresql
+    spec:
+      serviceAccountName: debian-postgresql
+      automountServiceAccountToken: true
+      containers:
+        - image: debian:bullseye-slim
+          imagePullPolicy: Always
+          name: debian-postgresql
+          command:
+            - "sleep"
+            - "3600"
+          env:
+            - name: POSTGRESQL_ADDON_DB
+              valueFrom:
+                secretKeyRef:
+                  name: postgresql-secrets # build using the name of the addon following by -secrets
+                  key: POSTGRESQL_ADDON_DB
+            - name: POSTGRESQL_ADDON_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: postgresql-secrets
+                  key: POSTGRESQL_ADDON_HOST
+            - name: POSTGRESQL_ADDON_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgresql-secrets
+                  key: POSTGRESQL_ADDON_PASSWORD
+            - name: POSTGRESQL_ADDON_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: postgresql-secrets
+                  key: POSTGRESQL_ADDON_PORT
+            - name: POSTGRESQL_ADDON_URI
+              valueFrom:
+                secretKeyRef:
+                  name: postgresql-secrets
+                  key: POSTGRESQL_ADDON_URI
+            - name: POSTGRESQL_ADDON_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgresql-secrets
+                  key: POSTGRESQL_ADDON_USER
+            - name: POSTGRESQL_ADDON_VERSION
+              valueFrom:
+                secretKeyRef:
+                  name: postgresql-secrets
+                  key: POSTGRESQL_ADDON_VERSION
+          resources:
+            requests:
+              memory: 64M
+              cpu: 100m
+            limits:
+              memory: 64M
+              cpu: 100m

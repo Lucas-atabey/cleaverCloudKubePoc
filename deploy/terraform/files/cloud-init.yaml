@@ -1,0 +1,11 @@
+#cloud-config
+users:
+  - name: deployer
+    groups: sudo
+    shell: /bin/bash
+    sudo: ['ALL=(ALL) NOPASSWD:ALL']
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAID96ocsD1r4VPXpa/z0hYB3G1MqPqI87E/sDfyKk0cQd lucas.atabey@miranui.fr
+
+disable_root: true
+ssh_pwauth: false

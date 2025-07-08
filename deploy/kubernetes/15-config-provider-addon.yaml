@@ -1,0 +1,11 @@
+---
+apiVersion: api.clever-cloud.com/v1
+kind: ConfigProvider
+metadata:
+  namespace: default
+  name: config-provider
+spec:
+  organisation: orga_<uuid-v4>
+  variables:
+    region: par
+    instance: m_med

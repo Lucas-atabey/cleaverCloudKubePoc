@@ -1,0 +1,120 @@
+---
+apiVersion: api.clever-cloud.com/v1
+kind: MongoDb
+metadata:
+  namespace: default
+  name: mongodb
+spec:
+  organisation: orga_<uuid-v4>
+  options:
+    version: 403
+    encryption: false
+  instance:
+    region: par
+    plan: xs_sml
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app: debian-mongodb
+  name: debian-mongodb
+  namespace: default
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: debian-mongodb
+  namespace: default
+spec:
+  minAvailable: 0
+  selector:
+    matchLabels:
+      app: debian-mongodb
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: debian-mongodb
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      app: debian-mongodb
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - {}
+  egress:
+    - {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: default
+  name: debian-mongodb
+  labels:
+    app: debian-mongodb
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: debian-mongodb
+  template:
+    metadata:
+      labels:
+        app: debian-mongodb
+    spec:
+      serviceAccountName: debian-mongodb
+      automountServiceAccountToken: true
+      containers:
+        - image: debian:bullseye-slim
+          imagePullPolicy: Always
+          name: debian-mongodb
+          command:
+            - "sleep"
+            - "3600"
+          env:
+            - name: MONGODB_ADDON_DB
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-secrets # build using the name of the addon following by -secrets
+                  key: MONGODB_ADDON_DB
+            - name: MONGODB_ADDON_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-secrets
+                  key: MONGODB_ADDON_HOST
+            - name: MONGODB_ADDON_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-secrets
+                  key: MONGODB_ADDON_PASSWORD
+            - name: MONGODB_ADDON_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-secrets
+                  key: MONGODB_ADDON_PORT
+            - name: MONGODB_ADDON_URI
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-secrets
+                  key: MONGODB_ADDON_URI
+            - name: MONGODB_ADDON_USER
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-secrets
+                  key: MONGODB_ADDON_USER
+            - name: MONGODB_ADDON_VERSION
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-secrets
+                  key: MONGODB_ADDON_VERSION
+          resources:
+            requests:
+              memory: 64M
+              cpu: 100m
+            limits:
+              memory: 64M
+              cpu: 100m

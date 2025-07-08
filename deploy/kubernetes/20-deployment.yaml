@@ -1,0 +1,191 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: clever-kubernetes-operator-system
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app: clever-kubernetes-operator
+  name: clever-kubernetes-operator
+  namespace: clever-kubernetes-operator-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app: clever-kubernetes-operator
+  name: system:clever-kubernetes-operator
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  - events
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - api.clever-cloud.com
+  resources:
+  - pulsars
+  - pulsars/status
+  - mysqls
+  - mysqls/status
+  - postgresqls
+  - postgresqls/status
+  - redis
+  - redis/status
+  - mongodbs
+  - mongodbs/status
+  - elasticsearches
+  - elasticsearches/status
+  - configproviders
+  - configproviders/status
+  - kvs
+  - kvs/status
+  - metabases
+  - metabases/status
+  - keycloaks
+  - keycloaks/status
+  - matomos
+  - matomos/status
+  - otoroshis
+  - otoroshis/status
+  - azimutts
+  - azimutts/status
+  - cellars
+  - cellars/status
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    app: clever-kubernetes-operator
+  name: system:clever-kubernetes-operator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:clever-kubernetes-operator
+subjects:
+- kind: ServiceAccount
+  name: clever-kubernetes-operator
+  namespace: clever-kubernetes-operator-system
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: clever-kubernetes-operator
+  namespace: clever-kubernetes-operator-system
+spec:
+  minAvailable: 0
+  selector:
+    matchLabels:
+      app: clever-kubernetes-operator
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: clever-kubernetes-operator
+  namespace: clever-kubernetes-operator-system
+spec:
+  podSelector:
+    matchLabels:
+      app: clever-kubernetes-operator
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - {}
+  egress:
+    - {}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  namespace: clever-kubernetes-operator-system
+  name: clever-kubernetes-operator-configuration
+data:
+  config.toml: W2FwaV0KdG9rZW4gPSAiIgpzZWNyZXQgPSAiIgpjb25zdW1lci1rZXkgPSAiIgpjb25zdW1lci1zZWNyZXQgPSAiIgo=
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: clever-kubernetes-operator-system
+  name: clever-kubernetes-operator
+  labels:
+    app: clever-kubernetes-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: clever-kubernetes-operator
+  template:
+    metadata:
+      annotations:
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '8080'
+      labels:
+        app: clever-kubernetes-operator
+    spec:
+      serviceAccountName: clever-kubernetes-operator
+      automountServiceAccountToken: true
+      volumes:
+      - name: config
+        secret:
+          secretName: clever-kubernetes-operator-configuration
+      containers:
+        - image: lucas1712/clever-kubernetes-operator:latest
+          imagePullPolicy: Always
+          name: clever-kubernetes-operator
+          command: ["/usr/local/bin/clever-kubernetes-operator"]
+          args: ["-v"]
+          volumeMounts:
+          - name: config
+            mountPath: "/etc/clever-kubernetes-operator"
+            readOnly: true
+          resources:
+            requests:
+              memory: 64M
+              cpu: 100m
+              ephemeral-storage: 128Mi
+            limits:
+              memory: 64M
+              cpu: 100m
+              ephemeral-storage: 128Mi
+          ports:
+            - containerPort: 8000
+              protocol: TCP
+              name: observability
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /healthz
+              port: observability
+              scheme: HTTP
+            periodSeconds: 5
+            successThreshold: 1
+            timeoutSeconds: 1
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsGroup: 25000
+            runAsUser: 20000
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30

@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "5001:5000"
+    environment:
+      - FLASK_RUN_HOST=0.0.0.0
+      - DATABASE_URL=mysql://user:password@mysql:3306/myapp
+    depends_on:
+      - mysql
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:80"
+    environment:
+      # Si ton frontend a besoin de l'URL de l'API (ex: VITE_API_URL), ajoute-la ici
+      - VITE_API_URL=http://localhost:5001
+
+  mysql:
+    image: mysql:8.0
+    restart: always
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_DATABASE: myapp
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+      MYSQL_ROOT_PASSWORD: rootpassword
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+volumes:
+  mysql-data:
